@@ -5,7 +5,7 @@ A dead simple module to take a configuration file by environment, retrieve secre
 ## Install
 
 ```bash
-> npm install --save Enconsec
+> npm install --save enconsec
 ```
 
 ## Usage

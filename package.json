@@ -6,6 +6,7 @@
   "scripts": {
     "test": "jest Enconsec.test.js"
   },
+  "homepage": "https://github.com/amitosdev/enconsec#readme",
   "author": "Amit Tal",
   "license": "Apache-2.0",
   "devDependencies": {

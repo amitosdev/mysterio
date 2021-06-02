@@ -5,7 +5,6 @@ const capitalize = require('lodash.capitalize')
 const isString = require('lodash.isstring')
 const debug = require('debug')('Enconsec')
 const path = require('path')
-const { clearLine } = require('readline')
 
 class Enconsec {
   constructor({

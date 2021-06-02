@@ -1,6 +1,6 @@
 {
   "name": "enconsec",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Get secrets from AWS secret manager and merge them with ENV configs",
   "main": "Enconsec.js",
   "scripts": {

@@ -55,6 +55,7 @@ async function init () {
 
 * `awsParams` (Object) - AWS SecretManager constructor [params](ttps://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/SecretsManager.html#constructor-property). Default: `{ region: 'us-east-1' }`
 * `configDirPath` (String) - config folder path. Default: `<current working dir>/config`
+* `localRCPath` (String) - local rc file path. Default: `<current working dir>/.enconsecrc`
 * `env` (String) - environment. Default: `process.env.NODE_ENV || 'local'`
 * `packageName` (String) - name of your app
 * `secretName` (String) - name of your secret. Default:  `${packageName}/${env}`
@@ -66,6 +67,10 @@ Get default configuration from `configDirPath` by `env`. If you have `default.js
 ### `Enconsec.getSecrets()`
 
 Get secrets from AWS SecretManager. Secret id will be `secretName`.
+
+### `Enconsec.getLocalRC()`
+
+Get configuration from `localRCPath`. This file will load last. It is usually used as a helper while developing services with this module. You can add it to your `.gitignore` file to make sure it will stay only on yor computer.
 
 ### `Enconsec.getMerged([, options])`
 

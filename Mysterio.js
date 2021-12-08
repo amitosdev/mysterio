@@ -3,14 +3,14 @@ const fs = require('fs/promises')
 const merge = require('lodash.merge')
 const capitalize = require('lodash.capitalize')
 const isString = require('lodash.isstring')
-const debug = require('debug')('Enconsec')
+const debug = require('debug')('Mysterio')
 const path = require('path')
 
-class Enconsec {
+class Mysterio {
   constructor({
     awsParams = { region: 'us-east-1' },
     configDirPath = path.join(process.cwd(), 'config'),
-    localRCPath =  path.join(process.cwd(), '.enconsecrc'),
+    localRCPath =  path.join(process.cwd(), '.mysteriorc'),
     env = process.env.NODE_ENV || 'local',
     packageName,
     secretName,
@@ -79,4 +79,4 @@ class Enconsec {
   }
 }
 
-module.exports = Enconsec
+module.exports = Mysterio

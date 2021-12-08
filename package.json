@@ -1,12 +1,12 @@
 {
-  "name": "enconsec",
+  "name": "mysterio",
   "version": "0.0.3",
   "description": "Get secrets from AWS secret manager and merge them with ENV configs",
-  "main": "Enconsec.js",
+  "main": "Mysterio.js",
   "scripts": {
-    "test": "jest Enconsec.test.js"
+    "test": "jest Mysterio.test.js"
   },
-  "homepage": "https://github.com/amitosdev/enconsec#readme",
+  "homepage": "https://github.com/amitosdev/mysterio#readme",
   "author": "Amit Tal",
   "license": "Apache-2.0",
   "devDependencies": {

@@ -1,14 +1,8 @@
 /* eslint-env jest */
-const Mysterio = require('./Mysterio')
+const Mysterio = require('../lib/Mysterio')
 const mockFs = require('mock-fs')
 
-const mockClient = {
-  send() {
-    return Promise.resolve({
-      SecretString: JSON.stringify({ fooSecret: 'bar' })
-    })
-  }
-}
+const mockClient = () => Promise.resolve({ fooSecret: 'bar' })
 
 describe('Mysterio', () => {
   beforeEach(() => {

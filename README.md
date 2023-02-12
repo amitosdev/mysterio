@@ -37,12 +37,28 @@ log-collector/prod
 
 ```javascript
 const { name } = require('package.json')
-const Mysterio = require('Mysterio')
+const { Mysterio } = require('Mysterio')
 
 async function init () {
   const mysterio = new Mysterio()
   try {
     const secrets = await mysterio.getMerged()
+  } catch (e) {
+    console.log('Error getting secrets ', e)
+  }
+}
+```
+
+4. You can also use Mysterio helper to just get secrets
+
+```javascript
+const { name } = require('package.json')
+const { getSecretsClient } = require('Mysterio')
+
+async function init () {
+  const getSecrets = getSecretsClient({})
+  try {
+    const secrets = await getSecrets('my-secret-name')
   } catch (e) {
     console.log('Error getting secrets ', e)
   }
@@ -78,3 +94,9 @@ Get a merged secret object with your AWS SecretManager secret and your local con
 
 * `isAddEnvProp` - add an env prop to the merged secrets in `is<Env> = true` pattern. Default: `false`
 * `isGetLocal` - pull secrets from AWS SecretManager on `local` env as well. Default: `true`
+
+#### `getSecretsClient([, options])`
+
+Get secrets from AWS SecretManager by secret name. This method will return an async function that accepts a secret name and returns the secrets object.
+
+* `awsParams` (Object) - AWS SecretManager constructor [params](ttps://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/SecretsManager.html#constructor-property). Default: `{ region: 'us-east-1' }`

@@ -37,7 +37,7 @@ log-collector/prod
 
 ```javascript
 const { name } = require('package.json')
-const { Mysterio } = require('Mysterio')
+const { Mysterio } = require('mysterio')
 
 async function init () {
   const mysterio = new Mysterio()
@@ -53,7 +53,7 @@ async function init () {
 
 ```javascript
 const { name } = require('package.json')
-const { getSecretsClient } = require('Mysterio')
+const { getSecretsClient } = require('mysterio')
 
 async function init () {
   const getSecrets = getSecretsClient({})

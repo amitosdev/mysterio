@@ -94,6 +94,7 @@ Get a merged secret object with your AWS SecretManager secret and your local con
 
 * `isAddEnvProp` - add an env prop to the merged secrets in `is<Env> = true` pattern. Default: `false`
 * `isGetLocal` - pull secrets from AWS SecretManager on `local` env as well. Default: `true`
+* `isGetTest` - pull secrets from AWS SecretManager on `test` env as well. Default: `false`
 
 #### `getSecretsClient([, options])`
 

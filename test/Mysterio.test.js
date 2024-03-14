@@ -10,7 +10,8 @@ describe('Mysterio', () => {
       'path/to/fake/dir/config': {
         'default.json': JSON.stringify({ fooDefault: 123 }),
         'local.json': JSON.stringify({ fooLocal: 123 }),
-        'dev.json': JSON.stringify({ fooDev: 456 })
+        'dev.json': JSON.stringify({ fooDev: 456 }),
+        'test.json': JSON.stringify({ fooTest: 1011 })
       },
       fake: {
         '.mysteriorc': JSON.stringify({ fooRc: 789 })
@@ -29,7 +30,7 @@ describe('Mysterio', () => {
         _client: mockClient
       })
       const defaultConfigs = await mysterio.getDefaultConfigs()
-      expect(defaultConfigs).toEqual({ fooDefault: 123 })
+      expect(defaultConfigs).toEqual({ fooDefault: 123, fooTest: 1011 })
     })
     test('with local env file', async () => {
       process.env.NODE_ENV = 'local'
@@ -75,8 +76,12 @@ describe('Mysterio', () => {
         configDirPath: 'path/to/fake/dir/config',
         _client: mockClient
       })
-      const configs = await mysterio.getMerged()
-      expect(configs).toEqual({ fooDefault: 123, fooSecret: 'bar' })
+      const configs = await mysterio.getMerged({ isGetTest: true })
+      expect(configs).toEqual({
+        fooDefault: 123,
+        fooTest: 1011,
+        fooSecret: 'bar'
+      })
     })
     test('with local env file', async () => {
       process.env.NODE_ENV = 'local'
@@ -90,6 +95,32 @@ describe('Mysterio', () => {
         fooDefault: 123,
         fooLocal: 123,
         fooSecret: 'bar'
+      })
+    })
+    test('with local env file - but isGetLocal false', async () => {
+      process.env.NODE_ENV = 'local'
+      const mysterio = new Mysterio({
+        packageName: 'my-test-package',
+        configDirPath: 'path/to/fake/dir/config',
+        _client: mockClient
+      })
+      const defaultConfigs = await mysterio.getMerged({ isGetLocal: false })
+      expect(defaultConfigs).toEqual({
+        fooDefault: 123,
+        fooLocal: 123
+      })
+    })
+    test('with test env file - but isGetTest false', async () => {
+      process.env.NODE_ENV = 'test'
+      const mysterio = new Mysterio({
+        packageName: 'my-test-package',
+        configDirPath: 'path/to/fake/dir/config',
+        _client: mockClient
+      })
+      const defaultConfigs = await mysterio.getMerged({ isGetTest: false })
+      expect(defaultConfigs).toEqual({
+        fooDefault: 123,
+        fooTest: 1011
       })
     })
     test('with local env file and rc', async () => {

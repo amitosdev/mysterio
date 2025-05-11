@@ -1,6 +1,7 @@
 /* eslint-env jest */
 const Mysterio = require('../lib/Mysterio')
 const mockFs = require('mock-fs')
+const { describe, test, expect, beforeEach, afterEach } = require('@jest/globals')
 
 const mockClient = () => Promise.resolve({ fooSecret: 'bar' })
 

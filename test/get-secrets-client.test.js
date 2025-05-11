@@ -1,5 +1,6 @@
 /* eslint-env jest */
 const getSecretsClient = require('../lib/get-secrets-client')
+const { describe, test, expect } = require('@jest/globals')
 
 const mockClient = {
   send() {

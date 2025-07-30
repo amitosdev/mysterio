@@ -1,13 +1,12 @@
 {
   "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
   "files": {
-    "ignore": ["node_modules/**", "dist/**"],
+    "includes": ["**", "!**/node_modules/**", "!**/dist/**"],
     "ignoreUnknown": true
   },
   "linter": {
     "enabled": true,
     "rules": {
-      "all": true,
       "complexity": {
         "noExcessiveCognitiveComplexity": {
           "level": "info",
@@ -17,7 +16,6 @@
         }
       },
       "suspicious": {
-        "noConsoleLog": "warn",
         "noConsole": "warn"
       },
       "style": {
@@ -49,4 +47,3 @@
     }
   }
 }
-

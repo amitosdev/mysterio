@@ -1,18 +1,16 @@
 {
   "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
   "files": {
-    "includes": ["**", "!**/node_modules/**", "!**/dist/**"],
+    "includes": ["**", "!node_modules", "!.next", "!dist", "!build"],
     "ignoreUnknown": true
   },
   "linter": {
-    "enabled": true,
     "rules": {
       "complexity": {
+        "useOptionalChain": "off",
         "noExcessiveCognitiveComplexity": {
           "level": "info",
-          "options": {
-            "maxAllowedComplexity": 50
-          }
+          "options": { "maxAllowedComplexity": 50 }
         }
       },
       "suspicious": {
@@ -20,24 +18,42 @@
       },
       "style": {
         "useBlockStatements": "off",
-        "useNamingConvention": "off",
-        "useFilenamingConvention": "off"
+        "noCommonJs": "error",
+        "useNamingConvention": "warn",
+        "useFilenamingConvention": {
+          "level": "warn",
+          "options": {
+            "strictCase": false,
+            "requireAscii": true,
+            "filenameCases": ["camelCase", "PascalCase"]
+          }
+        },
+        "noParameterAssign": "warn",
+        "noDefaultExport": "warn",
+        "useAsConstAssertion": "error",
+        "useDefaultParameterLast": "error",
+        "useEnumInitializers": "error",
+        "useSelfClosingElements": "error",
+        "useSingleVarDeclarator": "error",
+        "noUnusedTemplateLiteral": "error",
+        "useNumberNamespace": "error",
+        "noInferrableTypes": "error",
+        "noUselessElse": "error"
       },
       "correctness": {
         "noNodejsModules": "off",
-        "noUnusedImports": {
-          "level": "error",
-          "fix": "none"
-        },
-        "useImportExtensions": "off"
+        "useImportExtensions": "error",
+        "noUndeclaredVariables": "error"
       }
+    },
+    "domains": {
+      "test": "recommended"
     }
   },
   "formatter": {
     "formatWithErrors": true,
     "lineWidth": 120,
-    "indentStyle": "space",
-    "indentWidth": 2
+    "indentStyle": "space"
   },
   "javascript": {
     "formatter": {

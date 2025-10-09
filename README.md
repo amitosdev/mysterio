@@ -4,6 +4,10 @@
 
 Mysterio combines your local config files and AWS Secrets Manager into a single, easy-to-use configuration object. No more juggling multiple configuration sources or worrying about where your settings live - everything is merged intelligently at runtime.
 
+## Upgrading from v2.x?
+
+See the [Migration Guide](MIGRATION-v3.md) for detailed instructions on upgrading from v2.x to v3.0.
+
 ## Why Mysterio?
 
 ### Single Source of Truth

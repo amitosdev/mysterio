@@ -1,476 +1,445 @@
-# Mysterio 🎭
+# Mysterio
 
-> A powerful configuration management library that seamlessly merges local configuration files with AWS Secrets Manager secrets, providing a unified and secure way to manage application settings across different environments.
+**Unified configuration management for Node.js applications**
+
+Mysterio combines your local config files and AWS Secrets Manager into a single, easy-to-use configuration object. No more juggling multiple configuration sources or worrying about where your settings live - everything is merged intelligently at runtime.
 
 ## Why Mysterio?
 
-Managing application configuration across different environments (development, staging, production) while keeping sensitive data secure is challenging. Mysterio solves this by:
+### Single Source of Truth
+Stop managing configs and secrets separately. Mysterio merges them into one unified configuration object, giving you a single place to access all your application settings.
 
-- **Separating concerns**: Keep non-sensitive config in files, sensitive data in AWS Secrets Manager
-- **Environment-specific settings**: Automatically loads the right configuration based on your environment
-- **Secure defaults**: Prevents accidentally committing secrets to version control
-- **Developer-friendly**: Supports local overrides for easy development
+### The Simple Use Case: Environment Configs + Secrets
+The most common pattern is simple:
+1. **Environment config** - Your non-sensitive settings per environment (e.g., `config/production.json`)
+2. **AWS Secrets** - Your sensitive data (passwords, API keys, tokens)
 
-## How It Works
+Mysterio merges them at runtime into one config object. That's it!
 
-Mysterio uses a layered configuration approach with **deep merging**, combining settings in this order:
+### Smart Merging System (Optional Layers)
+For more complex scenarios, Mysterio supports a **layered merging strategy**:
 
-1. **Default configuration** (`config/default.json`) - Base settings for all environments
-2. **Environment-specific config** (`config/[env].json`) - Environment-specific overrides
-3. **AWS Secrets** - Sensitive data from AWS Secrets Manager
-4. **Local overrides** (`.mysteriorc`) - Developer-specific settings (git-ignored)
+```
+default.json -> env.json -> secrets (AWS) -> .mysteriorc
+ (optional)     (required)     (required)    (optional)
+```
 
-### Deep Merge Behavior
+**Core (required):**
+- **env.json** - Environment-specific configs (production.json, dev.json, etc.)
+- **secrets** - Secure values from AWS Secrets Manager
 
-Mysterio performs a **deep merge** of nested objects, meaning it intelligently combines objects at all levels rather than replacing them entirely. This is particularly powerful for complex configurations:
+**Optional layers:**
+- **default.json** - Base configs shared across all environments
+- **.mysteriorc** - Local developer overrides (gitignored)
 
-```javascript
-// Example: How deep merge works
+Each layer **overrides** values from the previous layers, allowing you to:
+- Define base configs that work everywhere (optional)
+- Set environment-specific settings (required)
+- Add secure secrets from AWS Secrets Manager (required)
+- Use local overrides for development (optional)
 
-// From config/default.json:
+**Simple Example (env + secrets only):**
+
+```json
+// config/production.json
 {
   "database": {
-    "host": "localhost",
-    "port": 5432,
-    "pool": { "min": 2, "max": 10 }
-  }
+    "host": "prod-db.example.com",
+    "port": 5432
+  },
+  "apiUrl": "https://api.production.com"
 }
 
-// From config/production.json:
+// AWS Secrets Manager (myapp/production)
 {
   "database": {
-    "host": "prod.database.com",  // Overrides default host
-    "pool": { "max": 50 }         // Only overrides max, keeps min: 2
-  }
-}
-
-// From AWS Secrets:
-{
-  "database": {
-    "user": "admin",
-    "password": "secret123"       // Adds new properties
-  }
+    "password": "super-secret-password",
+    "username": "dbuser"
+  },
+  "apiKey": "secret-api-key"
 }
 
 // Final merged result:
 {
   "database": {
-    "host": "prod.database.com",  // From production.json
-    "port": 5432,                  // From default.json (preserved)
-    "pool": {
-      "min": 2,                    // From default.json (preserved)
-      "max": 50                    // From production.json (override)
-    },
-    "user": "admin",               // From AWS Secrets (added)
-    "password": "secret123"        // From AWS Secrets (added)
-  }
+    "host": "prod-db.example.com",  // from production.json
+    "port": 5432,                    // from production.json
+    "username": "dbuser",            // from AWS Secrets
+    "password": "super-secret-password"  // from AWS Secrets
+  },
+  "apiUrl": "https://api.production.com",  // from production.json
+  "apiKey": "secret-api-key"  // from AWS Secrets
 }
 ```
 
-This deep merge capability allows you to:
-- Keep configuration DRY (Don't Repeat Yourself)
-- Override only what needs to change per environment
-- Add sensitive data without duplicating structure
-- Maintain complex nested configurations efficiently
+**Advanced Example (with all optional layers):**
+
+```json
+// config/default.json (optional - base for all environments)
+{
+  "database": {
+    "port": 5432
+  },
+  "apiUrl": "http://localhost:3000"
+}
+
+// config/production.json (required - environment specific)
+{
+  "database": {
+    "host": "prod-db.example.com"
+  },
+  "apiUrl": "https://api.production.com"
+}
+
+// AWS Secrets Manager (required - secrets)
+{
+  "database": {
+    "password": "super-secret-password"
+  }
+}
+
+// .mysteriorc (optional - local overrides, gitignored)
+{
+  "database": {
+    "host": "127.0.0.1"
+  }
+}
+
+// Final merged result with all layers:
+{
+  "database": {
+    "host": "127.0.0.1",      // from .mysteriorc (highest priority)
+    "port": 5432,              // from default.json
+    "password": "super-secret-password"  // from AWS Secrets
+  },
+  "apiUrl": "https://api.production.com"  // from production.json
+}
+```
+
+### Runtime Loading
+Configs and secrets are loaded at runtime, meaning:
+- **No build-time baking** - Change configs without rebuilding
+- **Environment-aware** - Automatically picks the right config based on `NODE_ENV`
+- **Dynamic secrets** - Rotate AWS secrets without redeploying
+- **Fresh on every start** - Always get the latest configuration
+
+### Security First
+- Secrets stay in AWS Secrets Manager (never committed to git)
+- Local overrides (`.mysteriorc`) can be gitignored for developer-specific settings
+- Supports AWS IAM roles and secure credential management
 
 ## Installation
 
 ```bash
-npm install --save mysterio
+npm install mysterio
 ```
 
 ## Quick Start
 
-### 1. Set up AWS Secrets Manager
+The simplest setup only requires environment configs and AWS secrets.
 
-Create a secret in AWS Secrets Manager with this naming convention:
+### 1. Create your config directory (minimal setup)
 
 ```
-[app-name]/[environment]
+your-project/
+├── config/
+│   ├── production.json   # Production settings (required)
+│   ├── dev.json          # Dev environment (optional)
+│   └── local.json        # Local development (optional)
+└── package.json
 ```
 
-Example: `my-app/production`
+**Optional files:**
+- `config/default.json` - Base configs for all environments
+- `.mysteriorc` - Local developer overrides (gitignore this!)
 
-Secret content (JSON):
+### 2. Create your environment config
+
+**config/production.json:**
 ```json
 {
-  "apiKey": "super-secret-key",
+  "appName": "MyApp",
+  "port": 8080,
   "database": {
-    "user": "admin",
-    "password": "secure-password-123"
+    "host": "prod-db.example.com",
+    "port": 5432
   },
-  "auth": {
-    "jwtSecret": "jwt-secret-key",
-    "sessionSecret": "session-secret-key"
-  }
+  "apiUrl": "https://api.production.com"
 }
 ```
 
-### 2. Create Configuration Files
-
-Create a `config` directory with your configuration files:
-
-**config/default.json** (shared settings):
+**config/local.json (for local development):**
 ```json
 {
-  "app": {
-    "name": "My Application",
-    "version": "1.0.0"
-  },
-  "server": {
-    "port": 3000,
-    "timeout": 30000
-  },
-  "database": {
-    "host": "localhost",
-    "port": 5432,
-    "pool": {
-      "min": 2,
-      "max": 10
-    }
-  },
-  "features": {
-    "analytics": true,
-    "notifications": false
-  }
-}
-```
-
-**config/production.json** (production overrides):
-```json
-{
-  "server": {
-    "port": 8080,
-    "timeout": 60000
-  },
-  "database": {
-    "host": "prod.database.com",
-    "pool": {
-      "min": 10,
-      "max": 50
-    }
-  },
-  "features": {
-    "notifications": true
-  }
-}
-```
-
-**config/development.json** (development settings):
-```json
-{
-  "server": {
-    "port": 3001
-  },
+  "appName": "MyApp",
+  "port": 3000,
   "database": {
     "host": "localhost",
     "port": 5432
   },
-  "debug": true
+  "apiUrl": "http://localhost:3000"
 }
 ```
 
-### 3. Use Mysterio in Your Application
+### 3. Set up AWS Secrets Manager
+
+Create a secret in AWS Secrets Manager with the name pattern: `{package-name}/{environment}`
+
+For example, if your package.json has `"name": "myapp"` and you're running in production:
+- Secret name: `myapp/production`
+- Secret value:
+```json
+{
+  "database": {
+    "password": "super-secret-password",
+    "username": "dbuser"
+  },
+  "apiKey": "your-secret-api-key"
+}
+```
+
+### 4. Use in your application
 
 ```javascript
 import { Mysterio } from 'mysterio'
 
-async function initializeApp() {
-  const mysterio = new Mysterio({
-    packageName: 'my-app',
-    env: process.env.NODE_ENV || 'development'
-  })
+const mysterio = new Mysterio()
+const config = await mysterio.getMerged()
 
-  try {
-    // Get merged configuration from all sources
-    const config = await mysterio.getMerged()
+console.log(config)
+// {
+//   appName: 'MyApp',
+//   port: 8080,
+//   database: {
+//     host: 'prod-db.example.com',
+//     port: 5432,
+//     username: 'dbuser',
+//     password: 'super-secret-password'
+//   },
+//   apiKey: 'your-secret-api-key'
+// }
 
-    // Result (in production) - Notice the DEEP MERGE:
-    // {
-    //   app: {
-    //     name: 'My Application',      // From default.json
-    //     version: '1.0.0'             // From default.json
-    //   },
-    //   server: {
-    //     port: 8080,                  // From production.json (overrides default)
-    //     timeout: 60000               // From production.json (overrides default)
-    //   },
-    //   features: {
-    //     analytics: true,             // From default.json
-    //     notifications: true          // From production.json (overrides default)
-    //   },
-    //   database: {                    // DEEP MERGED from multiple sources!
-    //     host: 'prod.database.com',  // From production.json
-    //     port: 5432,                  // From default.json (kept)
-    //     pool: {                      // From production.json (overrides default)
-    //       min: 10,
-    //       max: 50
-    //     },
-    //     user: 'admin',               // From AWS Secrets (added)
-    //     password: 'secure-password-123'  // From AWS Secrets (added)
-    //   },
-    //   apiKey: 'super-secret-key',   // From AWS Secrets
-    //   auth: {                        // From AWS Secrets
-    //     jwtSecret: 'jwt-secret-key',
-    //     sessionSecret: 'session-secret-key'
-    //   }
-    // }
-
-    return config
-  } catch (error) {
-    console.error('Failed to load configuration:', error)
-    process.exit(1)
-  }
-}
-
-// Use the configuration
-const config = await initializeApp()
-console.log(`Server starting on port ${config.server.port}`)
+// Use your config
+const db = await connectToDatabase(config.database)
 ```
 
-## Common Use Cases
-
-### Development with Local Overrides
-
-For local development, create a `.mysteriorc` file (add to `.gitignore`):
-
-```json
-{
-  "database": {
-    "host": "localhost",
-    "port": 5433
-  },
-  "apiKey": "local-development-key",
-  "debug": true
-}
-```
-
-```javascript
-const mysterio = new Mysterio({
-  packageName: 'my-app',
-  env: 'local',
-  localRCPath: './.mysteriorc'
-})
-
-// This will merge your local overrides last, perfect for development
-const config = await mysterio.getMerged({ isGetLocal: false })
-```
-
-### Testing Environment
-
-```javascript
-const mysterio = new Mysterio({
-  packageName: 'my-app',
-  env: 'test'
-})
-
-// Skip AWS secrets for testing
-const config = await mysterio.getMerged({ isGetTest: false })
-```
-
-### Direct Secret Access
-
-Sometimes you only need secrets without configuration:
-
-```javascript
-import { getSecretsClient } from 'mysterio'
-
-const getSecrets = getSecretsClient({ region: 'us-west-2' })
-const secrets = await getSecrets('my-app/production')
-// Returns only the secrets from AWS, no config files
-```
-
-### Environment Detection
-
-Add environment flags to your configuration:
-
-```javascript
-const config = await mysterio.getMerged({ isAddEnvProp: true })
-// Adds: { isProduction: true } in production environment
-// Useful for environment-specific logic
-```
-
-## API Reference
+## API
 
 ### `new Mysterio(options)`
 
 Creates a new Mysterio instance.
 
 **Options:**
-- `packageName` (String, **required**) - Your application name
-- `env` (String) - Environment name. Default: `process.env.NODE_ENV || 'local'`
-- `awsParams` (Object) - AWS SDK parameters. Default: `{ region: 'us-east-1' }`
-- `configDirPath` (String) - Configuration directory. Default: `./config`
-- `localRCPath` (String) - Local override file. Default: `./.mysteriorc`
-- `secretName` (String) - AWS secret name. Default: `${packageName}/${env}`
+- `configDirPath` (string): Path to config directory. Default: `./config`
+- `localRcPath` (string): Path to local RC file. Default: `./.mysteriorc`
+- `secretName` (string): Custom AWS secret name. Default: `{package-name}/{NODE_ENV || 'local'}`
+- `awsParams` (object): AWS SDK parameters for Secrets Manager client
+- `client` (function): Custom client function for fetching secrets
 
-### `mysterio.getMerged(options)`
+**Example:**
+```javascript
+const mysterio = new Mysterio({
+  configDirPath: './my-configs',
+  localRcPath: './.myapprc',
+  secretName: 'custom-secret-name',
+  awsParams: {
+    region: 'us-west-2'
+  }
+})
+```
 
-Returns the complete merged configuration.
+### `mysterio.getMerged(mergingOrder)`
 
-**Options:**
-- `isAddEnvProp` (Boolean) - Add environment flag. Default: `false`
-- `isGetLocal` (Boolean) - Fetch AWS secrets in local env. Default: `true`
-- `isGetTest` (Boolean) - Fetch AWS secrets in test env. Default: `false`
-
-**Returns:** Promise<Object> - Merged configuration object
-
-### `mysterio.getDefaultConfigs()`
-
-Get only the file-based configuration (default + environment).
-
-**Returns:** Promise<Object> - Configuration from files only
-
-### `mysterio.getSecrets()`
-
-Get only the AWS Secrets Manager secrets.
-
-**Returns:** Promise<Object> - Secrets from AWS
-
-### `mysterio.getLocalRC()`
-
-Get only the local override configuration.
-
-**Returns:** Promise<Object> - Local overrides
-
-### `getSecretsClient(awsParams)`
-
-Create a reusable secrets client.
+Returns the merged configuration object.
 
 **Parameters:**
-- `awsParams` (Object) - AWS SDK parameters
+- `mergingOrder` (array): Custom merge order. Default: `['default', 'env', 'secrets', 'rc']`
 
-**Returns:** Function - Async function that fetches secrets by name
+**Returns:** Promise<object> - Merged configuration object
+
+**Example:**
+```javascript
+// Default order
+const config = await mysterio.getMerged()
+
+// Custom order - secrets override everything
+const config = await mysterio.getMerged(['default', 'env', 'rc', 'secrets'])
+
+// Partial config - only default and env
+const config = await mysterio.getMerged(['default', 'env'])
+```
+
+### Individual Config Methods
+
+#### `mysterio.getDefaultConfig()`
+Returns the default config from `config/default.json`
+
+#### `mysterio.getEnvConfigs()`
+Returns environment-specific config based on `NODE_ENV` (e.g., `config/production.json`)
+
+#### `mysterio.getRcConfigs()`
+Returns local RC file config from `.mysteriorc`
+
+#### `mysterio.getSecrets()`
+Returns secrets from AWS Secrets Manager
+
+## Configuration Sources
+
+### Required Sources
+
+#### Environment Config (`{env}.json`)
+Environment-specific configuration based on `NODE_ENV`:
+- `NODE_ENV=production` -> `config/production.json`
+- `NODE_ENV=development` -> `config/development.json`
+- `NODE_ENV=test` -> `config/test.json`
+- Not set -> `config/local.json`
+
+This is where your non-sensitive settings live (ports, hosts, feature flags, etc.)
+
+#### Secrets (AWS Secrets Manager)
+Secure secrets stored in AWS, automatically fetched based on:
+- Package name from `package.json`
+- Current environment (`NODE_ENV`)
+- Pattern: `{package-name}/{environment}`
+
+This is where your sensitive data lives (passwords, API keys, tokens, etc.)
+
+### Optional Sources
+
+#### Default Config (`default.json`) - OPTIONAL
+Base configuration that applies to all environments. Use this to avoid duplicating common settings across environment files.
+
+If you don't need shared base configs, you can skip this file entirely.
+
+#### RC File (`.mysteriorc`) - OPTIONAL
+Local developer overrides (should be gitignored). Perfect for:
+- Database connections to local instances
+- API endpoints pointing to localhost
+- Debug flags
+- Developer-specific settings
+
+Most projects don't need this - only use it if developers need local overrides.
+
+## Advanced Usage
+
+### Custom Secret Client
+
+You can provide your own secret fetching function:
+
+```javascript
+const customClient = async (secretName) => {
+  // Fetch from your own secret management system
+  return {
+    apiKey: 'custom-secret'
+  }
+}
+
+const mysterio = new Mysterio({
+  client: customClient
+})
+```
+
+### Debugging
+
+Mysterio uses the [debug](https://www.npmjs.com/package/debug) module. Enable debug logs:
+
+```bash
+DEBUG=Mysterio:* node your-app.js
+```
+
+### TypeScript Support
+
+```typescript
+import { Mysterio } from 'mysterio'
+
+interface MyConfig {
+  database: {
+    host: string
+    port: number
+    password: string
+  }
+  apiKey: string
+}
+
+const mysterio = new Mysterio()
+const config = await mysterio.getMerged() as MyConfig
+```
 
 ## Best Practices
 
-### 1. Security First
-
-- **Never** commit sensitive data to version control
-- Add `.mysteriorc` to `.gitignore`
-- Use AWS Secrets Manager for all sensitive configuration
-- Rotate secrets regularly
-
-### 2. Configuration Structure
-
-```javascript
-// Good: Organized by feature/component
-{
-  "database": {
-    "host": "...",
-    "port": "..."
-  },
-  "cache": {
-    "host": "...",
-    "ttl": "..."
-  }
-}
-
-// Avoid: Flat structure
-{
-  "databaseHost": "...",
-  "databasePort": "...",
-  "cacheHost": "..."
-}
+### 1. Gitignore Sensitive Files
+```gitignore
+.mysteriorc
+config/local.json
 ```
 
-### 3. Environment Naming
-
-Use consistent environment names across your stack:
-- `local` - Local development
-- `development` - Development server
-- `staging` - Staging/pre-production
-- `production` - Production
-
-### 4. Error Handling
-
-Always handle configuration loading errors:
-
+### 2. Use Environment Variables for Runtime Control
 ```javascript
-async function loadConfig() {
-  const mysterio = new Mysterio({ packageName: 'my-app' })
-
-  try {
-    return await mysterio.getMerged()
-  } catch (error) {
-    if (process.env.NODE_ENV === 'production') {
-      // In production, fail fast
-      console.error('Critical: Cannot load configuration', error)
-      process.exit(1)
-    } else {
-      // In development, maybe use defaults
-      console.warn('Using default configuration', error)
-      return defaultConfig
-    }
-  }
-}
-```
-
-## Migration Guide
-
-### From CommonJS to ESM
-
-If you're upgrading from an older CommonJS version:
-
-**Before (CommonJS):**
-```javascript
-const { Mysterio } = require('mysterio')
-```
-
-**After (ESM):**
-```javascript
-import { Mysterio } from 'mysterio'
-```
-
-Make sure your `package.json` includes:
-```json
-{
-  "type": "module"
-}
-```
-
-## Troubleshooting
-
-### AWS Credentials Issues
-
-If you're getting AWS credential errors:
-
-1. Ensure AWS credentials are configured:
-   ```bash
-   aws configure
-   ```
-
-2. Or use environment variables:
-   ```bash
-   export AWS_ACCESS_KEY_ID=your-key
-   export AWS_SECRET_ACCESS_KEY=your-secret
-   export AWS_REGION=us-east-1
-   ```
-
-3. For EC2 instances, use IAM roles
-
-### Configuration Not Loading
-
-1. Check file paths are correct
-2. Verify JSON syntax in config files
-3. Ensure proper AWS permissions for Secrets Manager
-4. Check environment variable is set correctly
-
-### Testing Issues
-
-For unit tests, mock the AWS client:
-
-```javascript
-import { Mysterio } from 'mysterio'
-
-const mockClient = () => Promise.resolve({
-  secretKey: 'test-secret'
-})
-
 const mysterio = new Mysterio({
-  packageName: 'test-app',
-  _client: mockClient  // Use mock client
+  configDirPath: process.env.CONFIG_PATH || './config'
 })
+```
+
+### 3. Validate Your Config
+```javascript
+const config = await mysterio.getMerged()
+
+if (!config.database?.password) {
+  throw new Error('Database password not configured!')
+}
+```
+
+### 4. Organize Secrets by Environment
+- `myapp/local` - Local development secrets
+- `myapp/dev` - Development environment
+- `myapp/staging` - Staging environment
+- `myapp/production` - Production environment
+
+## How Merging Works
+
+Mysterio uses [lodash.merge](https://lodash.com/docs/#merge) for deep merging:
+
+1. **Order matters**: Later sources override earlier ones
+2. **Deep merge**: Nested objects are merged, not replaced
+3. **Arrays are replaced**: Arrays from later sources completely replace earlier ones
+
+**Example:**
+```javascript
+// default.json
+{
+  "features": ["feature1", "feature2"],
+  "database": { "host": "localhost", "port": 5432 }
+}
+
+// production.json
+{
+  "features": ["feature3"],
+  "database": { "host": "prod.db" }
+}
+
+// Merged result:
+{
+  "features": ["feature3"],  // Replaced (arrays don't merge)
+  "database": {
+    "host": "prod.db",       // Overridden
+    "port": 5432             // Kept from default
+  }
+}
+```
+
+## Environment Detection
+
+The environment is determined by `NODE_ENV`:
+
+```bash
+# Uses config/production.json and myapp/production secrets
+NODE_ENV=production node app.js
+
+# Uses config/dev.json and myapp/dev secrets
+NODE_ENV=dev node app.js
+
+# Uses config/local.json and myapp/local secrets (default)
+node app.js
 ```
 
 ## Contributing
@@ -484,3 +453,7 @@ Apache-2.0
 ## Author
 
 Amit Tal
+
+## Repository
+
+[https://github.com/amitosdev/mysterio](https://github.com/amitosdev/mysterio)

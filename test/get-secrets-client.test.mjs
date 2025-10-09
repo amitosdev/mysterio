@@ -1,5 +1,5 @@
 import test from 'ava'
-import { getSecretsClient } from '../lib/get-secrets-client.mjs'
+import { getAwsSecretsClient } from '../lib/get-aws-secrets-client.mjs'
 
 const mockClient = {
   send() {
@@ -10,7 +10,7 @@ const mockClient = {
 }
 
 test('get secrets with default configuration', async (t) => {
-  const client = getSecretsClient(null, mockClient)
-  const secrets = await client()
+  const client = getAwsSecretsClient(null, mockClient)
+  const secrets = await client('test-secret')
   t.deepEqual(secrets, { fooSecret: 'bar' })
 })

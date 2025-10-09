@@ -20,14 +20,6 @@
         "useBlockStatements": "off",
         "noCommonJs": "error",
         "useNamingConvention": "warn",
-        "useFilenamingConvention": {
-          "level": "warn",
-          "options": {
-            "strictCase": false,
-            "requireAscii": true,
-            "filenameCases": ["camelCase", "PascalCase"]
-          }
-        },
         "noParameterAssign": "warn",
         "noDefaultExport": "warn",
         "useAsConstAssertion": "error",

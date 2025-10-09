@@ -8,6 +8,7 @@
     "test": "ava",
     "lint": "biome lint --fix"
   },
+  "repository": "https://github.com/amitosdev/mysterio.git",
   "homepage": "https://github.com/amitosdev/mysterio#readme",
   "author": "Amit Tal",
   "license": "Apache-2.0",

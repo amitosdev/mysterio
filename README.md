@@ -10,17 +10,17 @@ See the [Migration Guide](MIGRATION-v3.md) for detailed instructions on upgradin
 
 ## Why Mysterio?
 
-### Single Source of Truth
+### 🎯 Single Source of Truth
 Stop managing configs and secrets separately. Mysterio merges them into one unified configuration object, giving you a single place to access all your application settings.
 
-### The Simple Use Case: Environment Configs + Secrets
+### 🚀 The Simple Use Case: Environment Configs + Secrets
 The most common pattern is simple:
 1. **Environment config** - Your non-sensitive settings per environment (e.g., `config/production.json`)
 2. **AWS Secrets** - Your sensitive data (passwords, API keys, tokens)
 
 Mysterio merges them at runtime into one config object. That's it!
 
-### Smart Merging System (Optional Layers)
+### 🔀 Smart Merging System (Optional Layers)
 For more complex scenarios, Mysterio supports a **layered merging strategy**:
 
 ```
@@ -120,14 +120,14 @@ Each layer **overrides** values from the previous layers, allowing you to:
 }
 ```
 
-### Runtime Loading
+### ⚡ Runtime Loading
 Configs and secrets are loaded at runtime, meaning:
 - **No build-time baking** - Change configs without rebuilding
 - **Environment-aware** - Automatically picks the right config based on `NODE_ENV`
 - **Dynamic secrets** - Rotate AWS secrets without redeploying
 - **Fresh on every start** - Always get the latest configuration
 
-### Security First
+### 🔒 Security First
 - Secrets stay in AWS Secrets Manager (never committed to git)
 - Local overrides (`.mysteriorc`) can be gitignored for developer-specific settings
 - Supports AWS IAM roles and secure credential management
@@ -138,7 +138,7 @@ Configs and secrets are loaded at runtime, meaning:
 npm install mysterio
 ```
 
-## Quick Start
+## 🚀 Quick Start
 
 The simplest setup only requires environment configs and AWS secrets.
 
@@ -192,7 +192,7 @@ Create a secret in AWS Secrets Manager with the name pattern: `{package-name}/{e
 For example, if your package.json has `"name": "myapp"` and you're running in production:
 - Secret name: `myapp/production`
 
-#### Option A: Using the Key/value Tab (Recommended)
+#### ✨ Option A: Using the Key/value Tab (Recommended)
 
 AWS Secrets Manager doesn't support JSON validation in the plaintext editor, which can lead to invalid JSON being saved. Instead, it's much more convenient to use the **Key/value tab** when creating or editing secrets. Mysterio can automatically unflatten these key-value pairs into nested objects:
 
@@ -216,7 +216,7 @@ const config = await mysterio.getMerged(['default', 'env', 'secrets', 'rc'], tru
 // }
 ```
 
-#### Option B: Using JSON (Plaintext Tab)
+#### 📝 Option B: Using JSON (Plaintext Tab)
 
 You can still use traditional JSON format in the plaintext editor:
 
@@ -373,15 +373,15 @@ Most projects don't need this - only use it if developers need local overrides.
 
 ## Advanced Usage
 
-### Unflattening Secrets (Key/Value Tab Support)
+### 🔓 Unflattening Secrets (Key/Value Tab Support)
 
 AWS Secrets Manager's Key/value tab is more convenient than the plaintext JSON editor because it doesn't require JSON validation and is easier to edit. However, it stores secrets as flat key-value pairs. Mysterio can automatically unflatten these dotted keys into nested objects.
 
-**Why use the Key/value tab?**
-- AWS Secrets Manager doesn't support JSON validation in the plaintext editor
-- Invalid JSON can be accidentally saved, breaking your application
-- The Key/value tab provides a better UI for managing individual secrets
-- Easier to add, remove, or update individual values
+**✨ Why use the Key/value tab?**
+- ⚠️ AWS Secrets Manager doesn't support JSON validation in the plaintext editor
+- 💥 Invalid JSON can be accidentally saved, breaking your application
+- 🎯 The Key/value tab provides a better UI for managing individual secrets
+- ⚡ Easier to add, remove, or update individual values
 
 **How it works:**
 
@@ -412,7 +412,7 @@ console.log(config)
 // }
 ```
 
-**Deep merging with unflattened secrets:**
+**🔀 Deep merging with unflattened secrets:**
 
 Unflattened secrets merge deeply with your config files:
 
@@ -442,6 +442,33 @@ const config = await mysterio.getMerged(['env', 'secrets'], true)
   }
 }
 ```
+
+**⚠️ Key Conflicts:**
+
+When using the unflatten feature, be aware of how key conflicts are handled. If a parent key already exists as a non-object value, it cannot be converted to accept nested properties. The behavior follows JavaScript object property assignment order:
+
+```javascript
+// AWS Secrets (Key/value tab):
+// database = "connection-string"
+// database.host = "localhost"
+
+// With unflatten enabled:
+const secrets = await mysterio.getSecrets(true)
+
+// Result: The last value wins based on object key order
+// If 'database' comes after 'database.host' in the object:
+// { database: "connection-string" }
+
+// If 'database.host' comes after 'database':
+// { database: "connection-string" }
+// Note: 'database.host' is ignored because 'database' is already a string
+```
+
+**💡 Best Practice:** Avoid conflicts by using consistent naming:
+- ✅ Use only nested keys: `database.host`, `database.port`, `database.password`
+- ❌ Don't mix: `database` (as value) and `database.host` (as nested key)
+
+This ensures your secrets unflatten predictably into nested objects.
 
 ### Custom Secret Client
 
@@ -486,7 +513,7 @@ const mysterio = new Mysterio()
 const config = await mysterio.getMerged() as MyConfig
 ```
 
-## Best Practices
+## 📚 Best Practices
 
 ### 1. Gitignore Sensitive Files
 ```gitignore
@@ -516,7 +543,7 @@ if (!config.database?.password) {
 - `myapp/staging` - Staging environment
 - `myapp/production` - Production environment
 
-## How Merging Works
+## 🔀 How Merging Works
 
 Mysterio uses [lodash.merge](https://lodash.com/docs/#merge) for deep merging:
 
@@ -548,7 +575,7 @@ Mysterio uses [lodash.merge](https://lodash.com/docs/#merge) for deep merging:
 }
 ```
 
-## Environment Detection
+## 🌍 Environment Detection
 
 The environment is determined by `NODE_ENV`:
 

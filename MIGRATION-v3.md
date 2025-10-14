@@ -279,17 +279,17 @@ mysterio._secretName  // Now mysterio.#secretName (private)
 mysterio.env          // Removed (use process.env.NODE_ENV)
 ```
 
-## New Features in v3.1
+## ✨ New Features in v3.1
 
-### Secret Unflattening (Key/Value Tab Support)
+### 🔓 Secret Unflattening (Key/Value Tab Support)
 
 AWS Secrets Manager's Key/value tab is more convenient than JSON, but it doesn't support JSON validation which can cause invalid JSON to be saved. With v3.1, you can now use the Key/value tab and Mysterio will automatically unflatten dotted keys into nested objects.
 
 **Why this matters:**
-- AWS Secrets Manager doesn't validate JSON in the plaintext editor
-- Invalid JSON can break your application
-- The Key/value tab is easier to use for managing secrets
-- Dotted keys like `database.password` are automatically converted to `{ database: { password: ... } }`
+- ⚠️ AWS Secrets Manager doesn't validate JSON in the plaintext editor
+- 💥 Invalid JSON can break your application
+- 🎯 The Key/value tab is easier to use for managing secrets
+- 🔀 Dotted keys like `database.password` are automatically converted to `{ database: { password: ... } }`
 
 **How to use it:**
 
@@ -327,6 +327,23 @@ By default, secrets are NOT unflattened to maintain backward compatibility:
 const config = await mysterio.getMerged()
 const secrets = await mysterio.getSecrets()
 ```
+
+**⚠️ Key Conflicts:**
+
+When unflattening, avoid mixing parent keys with nested keys. If a key exists as both a value and a parent for nested keys, the behavior follows JavaScript object property order (last value wins):
+
+```javascript
+// ❌ Problematic: mixing 'database' as value and nested key
+// database = "connection-string"
+// database.host = "localhost"
+
+// ✅ Better: use only nested keys
+// database.host = "localhost"
+// database.port = 5432
+// database.password = "secret"
+```
+
+**💡 Best Practice:** Use consistent dotted notation for all related secrets to ensure predictable nesting.
 
 ## Step-by-Step Migration
 

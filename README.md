@@ -191,7 +191,36 @@ Create a secret in AWS Secrets Manager with the name pattern: `{package-name}/{e
 
 For example, if your package.json has `"name": "myapp"` and you're running in production:
 - Secret name: `myapp/production`
-- Secret value:
+
+#### Option A: Using the Key/value Tab (Recommended)
+
+AWS Secrets Manager doesn't support JSON validation in the plaintext editor, which can lead to invalid JSON being saved. Instead, it's much more convenient to use the **Key/value tab** when creating or editing secrets. Mysterio can automatically unflatten these key-value pairs into nested objects:
+
+**In AWS Console (Key/value tab):**
+```
+database.password = super-secret-password
+database.username = dbuser
+apiKey = your-secret-api-key
+```
+
+**In your code (with unflatten enabled):**
+```javascript
+const config = await mysterio.getMerged(['default', 'env', 'secrets', 'rc'], true)
+// Secrets are automatically unflattened to:
+// {
+//   database: {
+//     password: 'super-secret-password',
+//     username: 'dbuser'
+//   },
+//   apiKey: 'your-secret-api-key'
+// }
+```
+
+#### Option B: Using JSON (Plaintext Tab)
+
+You can still use traditional JSON format in the plaintext editor:
+
+**Secret value:**
 ```json
 {
   "database": {
@@ -252,19 +281,23 @@ const mysterio = new Mysterio({
 })
 ```
 
-### `mysterio.getMerged(mergingOrder)`
+### `mysterio.getMerged(mergingOrder, unflattenSecrets)`
 
 Returns the merged configuration object.
 
 **Parameters:**
 - `mergingOrder` (array): Custom merge order. Default: `['default', 'env', 'secrets', 'rc']`
+- `unflattenSecrets` (boolean): Whether to unflatten dotted secret keys into nested objects. Default: `false`
 
 **Returns:** Promise<object> - Merged configuration object
 
 **Example:**
 ```javascript
-// Default order
+// Default order with flat secrets
 const config = await mysterio.getMerged()
+
+// With unflattened secrets (recommended for AWS Key/value tab)
+const config = await mysterio.getMerged(['default', 'env', 'secrets', 'rc'], true)
 
 // Custom order - secrets override everything
 const config = await mysterio.getMerged(['default', 'env', 'rc', 'secrets'])
@@ -284,8 +317,22 @@ Returns environment-specific config based on `NODE_ENV` (e.g., `config/productio
 #### `mysterio.getRcConfigs()`
 Returns local RC file config from `.mysteriorc`
 
-#### `mysterio.getSecrets()`
+#### `mysterio.getSecrets(unflatten)`
 Returns secrets from AWS Secrets Manager
+
+**Parameters:**
+- `unflatten` (boolean): Whether to unflatten dotted keys into nested objects. Default: `false`
+
+**Example:**
+```javascript
+// Get secrets as flat key-value pairs
+const secrets = await mysterio.getSecrets(false)
+// { 'database.password': 'secret', 'database.username': 'user' }
+
+// Get secrets with dotted keys unflattened into nested objects
+const secrets = await mysterio.getSecrets(true)
+// { database: { password: 'secret', username: 'user' } }
+```
 
 ## Configuration Sources
 
@@ -325,6 +372,76 @@ Local developer overrides (should be gitignored). Perfect for:
 Most projects don't need this - only use it if developers need local overrides.
 
 ## Advanced Usage
+
+### Unflattening Secrets (Key/Value Tab Support)
+
+AWS Secrets Manager's Key/value tab is more convenient than the plaintext JSON editor because it doesn't require JSON validation and is easier to edit. However, it stores secrets as flat key-value pairs. Mysterio can automatically unflatten these dotted keys into nested objects.
+
+**Why use the Key/value tab?**
+- AWS Secrets Manager doesn't support JSON validation in the plaintext editor
+- Invalid JSON can be accidentally saved, breaking your application
+- The Key/value tab provides a better UI for managing individual secrets
+- Easier to add, remove, or update individual values
+
+**How it works:**
+
+When you enable unflattening, Mysterio converts dotted keys like `database.password` into nested objects:
+
+```javascript
+// AWS Secrets (Key/value tab):
+// database.host = prod-db.example.com
+// database.port = 5432
+// database.credentials.password = secret123
+// database.credentials.username = dbuser
+// apiKey = my-api-key
+
+// With unflatten enabled:
+const config = await mysterio.getMerged(['default', 'env', 'secrets'], true)
+
+console.log(config)
+// {
+//   database: {
+//     host: 'prod-db.example.com',
+//     port: 5432,
+//     credentials: {
+//       password: 'secret123',
+//       username: 'dbuser'
+//     }
+//   },
+//   apiKey: 'my-api-key'
+// }
+```
+
+**Deep merging with unflattened secrets:**
+
+Unflattened secrets merge deeply with your config files:
+
+```javascript
+// config/production.json
+{
+  "database": {
+    "host": "prod-db.example.com",
+    "maxConnections": 100
+  }
+}
+
+// AWS Secrets (Key/value tab):
+// database.password = secret123
+// database.username = dbuser
+
+// With unflatten enabled:
+const config = await mysterio.getMerged(['env', 'secrets'], true)
+
+// Result - secrets merge into existing database object:
+{
+  "database": {
+    "host": "prod-db.example.com",
+    "maxConnections": 100,
+    "password": "secret123",  // From secrets
+    "username": "dbuser"       // From secrets
+  }
+}
+```
 
 ### Custom Secret Client
 

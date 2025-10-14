@@ -9,6 +9,19 @@ const mockClient = (secretName) => {
   if (secretName === 'custom-secret') {
     return Promise.resolve({ customSecret: 'custom-value' })
   }
+  if (secretName === 'nested-secret') {
+    return Promise.resolve({ 'foo.bar': 'nested-value', 'foo.baz': 123, 'top': 'level' })
+  }
+  if (secretName === 'regular-json-secret') {
+    // Regular nested JSON without dotted keys
+    return Promise.resolve({
+      database: {
+        host: 'secret-host',
+        password: 'secret-password'
+      },
+      apiKey: 'secret-api-key'
+    })
+  }
   if (secretName === 'test-package/test') {
     return Promise.resolve({ packageSecret: 'from-package-name' })
   }
@@ -187,7 +200,7 @@ test('getRcConfigs() - throws error for invalid JSON', async (t) => {
 // ===========================================
 // getSecrets() tests
 // ===========================================
-test('getSecrets() - uses provided secretName', async (t) => {
+test('getSecrets() - uses provided secretName with unflatten=false', async (t) => {
   const { configDir } = await setupTestDir(t)
 
   const mysterio = new Mysterio({
@@ -196,14 +209,50 @@ test('getSecrets() - uses provided secretName', async (t) => {
     client: mockClient
   })
 
-  const secrets = await mysterio.getSecrets()
+  const secrets = await mysterio.getSecrets(false)
   t.deepEqual(secrets, { customSecret: 'custom-value' })
+})
+
+test('getSecrets() - with unflatten=true converts dotted keys to nested objects', async (t) => {
+  const { configDir } = await setupTestDir(t)
+
+  const mysterio = new Mysterio({
+    configDirPath: configDir,
+    secretName: 'nested-secret',
+    client: mockClient
+  })
+
+  const secrets = await mysterio.getSecrets(true)
+  t.deepEqual(secrets, {
+    foo: {
+      bar: 'nested-value',
+      baz: 123
+    },
+    top: 'level'
+  })
+})
+
+test('getSecrets() - with unflatten=false keeps dotted keys as is', async (t) => {
+  const { configDir } = await setupTestDir(t)
+
+  const mysterio = new Mysterio({
+    configDirPath: configDir,
+    secretName: 'nested-secret',
+    client: mockClient
+  })
+
+  const secrets = await mysterio.getSecrets(false)
+  t.deepEqual(secrets, {
+    'foo.bar': 'nested-value',
+    'foo.baz': 123,
+    'top': 'level'
+  })
 })
 
 // ===========================================
 // getMerged() tests
 // ===========================================
-test('getMerged() - merges in default order', async (t) => {
+test('getMerged() - merges in default order with unflattenSecrets=false', async (t) => {
   const { tempDir, configDir } = await setupTestDir(t)
   const originalNodeEnv = process.env.NODE_ENV
   process.env.NODE_ENV = 'test'
@@ -215,7 +264,7 @@ test('getMerged() - merges in default order', async (t) => {
     localRcPath: path.join(tempDir, '.mysteriorc')
   })
 
-  const merged = await mysterio.getMerged()
+  const merged = await mysterio.getMerged(['default', 'env', 'secrets', 'rc'], false)
   t.deepEqual(merged, {
     fooDefault: 123,
     fooTest: 1011,
@@ -232,7 +281,7 @@ test('getMerged() - merges in default order', async (t) => {
   }
 })
 
-test('getMerged() - merges with custom order', async (t) => {
+test('getMerged() - merges with custom order and unflattenSecrets=false', async (t) => {
   const { tempDir, configDir } = await setupTestDir(t)
   const originalNodeEnv = process.env.NODE_ENV
   process.env.NODE_ENV = 'test'
@@ -245,7 +294,7 @@ test('getMerged() - merges with custom order', async (t) => {
   })
 
   // Custom order: rc comes before secrets, so secrets should override rc
-  const merged = await mysterio.getMerged(['default', 'env', 'rc', 'secrets'])
+  const merged = await mysterio.getMerged(['default', 'env', 'rc', 'secrets'], false)
   t.deepEqual(merged, {
     fooDefault: 123,
     fooTest: 1011,
@@ -262,7 +311,7 @@ test('getMerged() - merges with custom order', async (t) => {
   }
 })
 
-test('getMerged() - works with partial order', async (t) => {
+test('getMerged() - works with partial order and unflattenSecrets=false', async (t) => {
   const { configDir } = await setupTestDir(t)
   const originalNodeEnv = process.env.NODE_ENV
   process.env.NODE_ENV = 'test'
@@ -273,7 +322,7 @@ test('getMerged() - works with partial order', async (t) => {
   })
 
   // Only get default and env configs
-  const merged = await mysterio.getMerged(['default', 'env'])
+  const merged = await mysterio.getMerged(['default', 'env'], false)
   t.deepEqual(merged, {
     fooDefault: 123,
     fooTest: 1011,
@@ -303,7 +352,7 @@ test('getMerged() - throws error for invalid source in order', async (t) => {
   )
 })
 
-test('getMerged() - handles missing config files gracefully', async (t) => {
+test('getMerged() - handles missing config files gracefully with unflattenSecrets=false', async (t) => {
   const { tempDir } = await setupTestDir(t)
   const emptyConfigDir = path.join(tempDir, 'empty-config')
   await fs.mkdir(emptyConfigDir)
@@ -317,7 +366,7 @@ test('getMerged() - handles missing config files gracefully', async (t) => {
     localRcPath: path.join(emptyConfigDir, 'non-existent.rc')
   })
 
-  const merged = await mysterio.getMerged()
+  const merged = await mysterio.getMerged(['default', 'env', 'secrets', 'rc'], false)
   t.deepEqual(merged, {
     fooSecret: 'bar' // Only secrets should be present
   })
@@ -343,4 +392,200 @@ test('getMerged() - preserves empty object prototype', async (t) => {
   // Check that the merged object doesn't have unexpected prototype pollution
   t.true(Object.getPrototypeOf(merged) === Object.prototype)
   t.deepEqual(merged, { fooDefault: 123, commonKey: 'default' })
+})
+
+// ===========================================
+// getMerged() with unflattenSecrets=true tests
+// ===========================================
+test('getMerged() - with unflattenSecrets=true unflattens dotted secret keys', async (t) => {
+  const { tempDir, configDir } = await setupTestDir(t)
+  const originalNodeEnv = process.env.NODE_ENV
+  process.env.NODE_ENV = 'test'
+
+  const mysterio = new Mysterio({
+    configDirPath: configDir,
+    secretName: 'nested-secret',
+    client: mockClient,
+    localRcPath: path.join(tempDir, '.mysteriorc')
+  })
+
+  const merged = await mysterio.getMerged(['default', 'env', 'secrets', 'rc'], true)
+  t.deepEqual(merged, {
+    fooDefault: 123,
+    fooTest: 1011,
+    foo: {
+      bar: 'nested-value',
+      baz: 123
+    },
+    top: 'level',
+    fooRc: 789,
+    commonKey: 'rc'
+  })
+
+  // Restore
+  if (originalNodeEnv) {
+    process.env.NODE_ENV = originalNodeEnv
+  } else {
+    delete process.env.NODE_ENV
+  }
+})
+
+test('getMerged() - with unflattenSecrets=true merges nested secrets with existing nested config', async (t) => {
+  const { tempDir, configDir } = await setupTestDir(t)
+  const originalNodeEnv = process.env.NODE_ENV
+  process.env.NODE_ENV = 'test'
+
+  // Create a config file with nested structure matching the secret keys
+  await fs.writeFile(
+    path.join(configDir, 'test.json'),
+    JSON.stringify({
+      fooTest: 1011,
+      commonKey: 'test',
+      foo: {
+        bar: 'original-bar',
+        existing: 'value'
+      }
+    })
+  )
+
+  const mysterio = new Mysterio({
+    configDirPath: configDir,
+    secretName: 'nested-secret',
+    client: mockClient,
+    localRcPath: path.join(tempDir, '.mysteriorc')
+  })
+
+  const merged = await mysterio.getMerged(['default', 'env', 'secrets'], true)
+
+  // Secrets should override the env config's nested values but preserve other nested keys
+  t.deepEqual(merged, {
+    fooDefault: 123,
+    fooTest: 1011,
+    foo: {
+      bar: 'nested-value', // Overridden by secret
+      baz: 123,            // Added by secret
+      existing: 'value'    // Preserved from env config
+    },
+    top: 'level',
+    commonKey: 'test'
+  })
+
+  // Restore
+  if (originalNodeEnv) {
+    process.env.NODE_ENV = originalNodeEnv
+  } else {
+    delete process.env.NODE_ENV
+  }
+})
+
+test('getMerged() - with unflattenSecrets=true handles complex nested merging', async (t) => {
+  const originalNodeEnv = process.env.NODE_ENV
+  process.env.NODE_ENV = 'test'
+
+  // Create a fresh temp directory specifically for this test
+  const tempDir = path.join(tmpdir(), `mysterio-complex-test-${Date.now()}-${Math.random().toString(36).slice(2)}`)
+  const configDir = path.join(tempDir, 'config')
+
+  // Create directories
+  await fs.mkdir(configDir, { recursive: true })
+
+  // Create complex nested config files
+  await fs.writeFile(
+    path.join(configDir, 'default.json'),
+    JSON.stringify({
+      database: {
+        host: 'localhost',
+        port: 5432,
+        credentials: {
+          username: 'default-user'
+        }
+      }
+    })
+  )
+
+  await fs.writeFile(
+    path.join(configDir, 'test.json'),
+    JSON.stringify({
+      database: {
+        host: 'test-host',
+        credentials: {
+          username: 'test-user'
+        }
+      }
+    })
+  )
+
+  // Mock client that returns dotted keys for database credentials
+  const complexMockClient = () => {
+    return Promise.resolve({
+      'database.credentials.password': 'secret-password',
+      'database.credentials.token': 'secret-token'
+    })
+  }
+
+  const mysterio = new Mysterio({
+    configDirPath: configDir,
+    secretName: 'complex-secret',
+    client: complexMockClient,
+    localRcPath: path.join(tempDir, '.mysteriorc')
+  })
+
+  const merged = await mysterio.getMerged(['default', 'env', 'secrets'], true)
+
+  t.deepEqual(merged, {
+    database: {
+      host: 'test-host',        // From test config
+      port: 5432,               // From default config
+      credentials: {
+        username: 'test-user',  // From test config
+        password: 'secret-password', // From secrets (unflattened)
+        token: 'secret-token'   // From secrets (unflattened)
+      }
+    }
+  })
+
+  // Clean up
+  await fs.rm(tempDir, { recursive: true, force: true })
+
+  // Restore
+  if (originalNodeEnv) {
+    process.env.NODE_ENV = originalNodeEnv
+  } else {
+    delete process.env.NODE_ENV
+  }
+})
+
+test('getMerged() - with unflattenSecrets=true is backward compatible with regular nested JSON', async (t) => {
+  const { tempDir, configDir } = await setupTestDir(t)
+  const originalNodeEnv = process.env.NODE_ENV
+  process.env.NODE_ENV = 'test'
+
+  const mysterio = new Mysterio({
+    configDirPath: configDir,
+    secretName: 'regular-json-secret',
+    client: mockClient,
+    localRcPath: path.join(tempDir, '.mysteriorc')
+  })
+
+  // Even with unflatten=true, regular nested JSON should remain unchanged
+  const merged = await mysterio.getMerged(['default', 'env', 'secrets', 'rc'], true)
+
+  t.deepEqual(merged, {
+    fooDefault: 123,
+    fooTest: 1011,
+    fooRc: 789,
+    database: {
+      host: 'secret-host',      // From secrets (already nested)
+      password: 'secret-password' // From secrets (already nested)
+    },
+    apiKey: 'secret-api-key',   // From secrets
+    commonKey: 'rc'
+  })
+
+  // Restore
+  if (originalNodeEnv) {
+    process.env.NODE_ENV = originalNodeEnv
+  } else {
+    delete process.env.NODE_ENV
+  }
 })

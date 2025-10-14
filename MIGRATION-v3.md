@@ -1,6 +1,6 @@
-# Migration Guide: v2.x to v3.0
+# Migration Guide: Mysterio v2.x → v3.x
 
-This guide will help you migrate from Mysterio v2.x to v3.0.
+This guide will help you migrate from Mysterio v2.x to v3.x.
 
 ## Overview of Changes
 
@@ -279,6 +279,55 @@ mysterio._secretName  // Now mysterio.#secretName (private)
 mysterio.env          // Removed (use process.env.NODE_ENV)
 ```
 
+## New Features in v3.1
+
+### Secret Unflattening (Key/Value Tab Support)
+
+AWS Secrets Manager's Key/value tab is more convenient than JSON, but it doesn't support JSON validation which can cause invalid JSON to be saved. With v3.1, you can now use the Key/value tab and Mysterio will automatically unflatten dotted keys into nested objects.
+
+**Why this matters:**
+- AWS Secrets Manager doesn't validate JSON in the plaintext editor
+- Invalid JSON can break your application
+- The Key/value tab is easier to use for managing secrets
+- Dotted keys like `database.password` are automatically converted to `{ database: { password: ... } }`
+
+**How to use it:**
+
+```javascript
+// In AWS Console (Key/value tab):
+// database.host = prod-db.example.com
+// database.password = secret123
+// apiKey = my-key
+
+// Enable unflattening in your code:
+const config = await mysterio.getMerged(['default', 'env', 'secrets'], true)
+
+// Result:
+// {
+//   database: {
+//     host: 'prod-db.example.com',
+//     password: 'secret123'
+//   },
+//   apiKey: 'my-key'
+// }
+```
+
+You can also unflatten secrets independently:
+
+```javascript
+// Unflatten secrets only
+const secrets = await mysterio.getSecrets(true)
+```
+
+**Default behavior (backward compatible):**
+By default, secrets are NOT unflattened to maintain backward compatibility:
+
+```javascript
+// Default - secrets remain flat (backward compatible)
+const config = await mysterio.getMerged()
+const secrets = await mysterio.getSecrets()
+```
+
 ## Step-by-Step Migration
 
 ### Step 1: Update to ESM
@@ -477,6 +526,62 @@ const mysterio = new Mysterio({
 ```
 
 This gives you complete control over the secret naming without relying on automatic detection from `package.json` or `NODE_ENV`.
+
+### Q: Should I migrate my secrets to use the Key/value tab? (v3.1+)
+
+**A:** It's recommended but not required. The Key/value tab provides:
+- Better UI for managing secrets
+- No risk of invalid JSON
+- Easier to update individual values
+- Works seamlessly with the `unflatten` feature (available in v3.1+)
+
+To migrate:
+
+1. **In AWS Console:**
+   - Open your secret in AWS Secrets Manager
+   - Switch to the Key/value tab
+   - Add your secrets using dotted notation (e.g., `database.password`, `database.username`)
+
+2. **In your code:**
+   - Enable unflattening: `getMerged(['default', 'env', 'secrets', 'rc'], true)`
+   - Or for secrets only: `getSecrets(true)`
+
+**Example migration:**
+
+Before (JSON):
+```json
+{
+  "database": {
+    "password": "secret123",
+    "username": "user"
+  }
+}
+```
+
+After (Key/value tab):
+```
+database.password = secret123
+database.username = user
+```
+
+Your code:
+```javascript
+// Enable unflattening
+const config = await mysterio.getMerged(['default', 'env', 'secrets'], true)
+// Result is the same nested structure
+```
+
+### Q: Is the unflatten feature backward compatible? (v3.1+)
+
+**A:** Yes! By default, secrets are NOT unflattened, maintaining backward compatibility. You must explicitly enable it:
+
+```javascript
+// Backward compatible (default) - secrets remain flat
+const config = await mysterio.getMerged()
+
+// New behavior (v3.1+) - unflatten dotted keys
+const config = await mysterio.getMerged(['default', 'env', 'secrets', 'rc'], true)
+```
 
 ## Need Help?
 

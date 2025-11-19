@@ -10,7 +10,7 @@ const mockClient = (secretName) => {
     return Promise.resolve({ customSecret: 'custom-value' })
   }
   if (secretName === 'nested-secret') {
-    return Promise.resolve({ 'foo.bar': 'nested-value', 'foo.baz': 123, 'top': 'level' })
+    return Promise.resolve({ 'foo.bar': 'nested-value', 'foo.baz': 123, top: 'level' })
   }
   if (secretName === 'regular-json-secret') {
     // Regular nested JSON without dotted keys
@@ -287,7 +287,7 @@ test('getSecrets() - with unflatten=false keeps dotted keys as is', async (t) =>
   t.deepEqual(secrets, {
     'foo.bar': 'nested-value',
     'foo.baz': 123,
-    'top': 'level'
+    top: 'level'
   })
 })
 
@@ -544,10 +544,7 @@ test('getMerged() - with unflattenSecrets=true merges nested secrets with existi
   await fs.mkdir(configDir, { recursive: true })
 
   // Create default config
-  await fs.writeFile(
-    path.join(configDir, 'default.json'),
-    JSON.stringify({ fooDefault: 123, commonKey: 'default' })
-  )
+  await fs.writeFile(path.join(configDir, 'default.json'), JSON.stringify({ fooDefault: 123, commonKey: 'default' }))
 
   // Create a test config file with nested structure matching the secret keys
   await fs.writeFile(
@@ -577,8 +574,8 @@ test('getMerged() - with unflattenSecrets=true merges nested secrets with existi
     fooTest: 1011,
     foo: {
       bar: 'nested-value', // Overridden by secret
-      baz: 123,            // Added by secret
-      existing: 'value'    // Preserved from env config
+      baz: 123, // Added by secret
+      existing: 'value' // Preserved from env config
     },
     top: 'level',
     commonKey: 'test'
@@ -651,12 +648,12 @@ test('getMerged() - with unflattenSecrets=true handles complex nested merging', 
 
   t.deepEqual(merged, {
     database: {
-      host: 'test-host',        // From test config
-      port: 5432,               // From default config
+      host: 'test-host', // From test config
+      port: 5432, // From default config
       credentials: {
-        username: 'test-user',  // From test config
+        username: 'test-user', // From test config
         password: 'secret-password', // From secrets (unflattened)
-        token: 'secret-token'   // From secrets (unflattened)
+        token: 'secret-token' // From secrets (unflattened)
       }
     }
   })
@@ -692,10 +689,10 @@ test('getMerged() - with unflattenSecrets=true is backward compatible with regul
     fooTest: 1011,
     fooRc: 789,
     database: {
-      host: 'secret-host',      // From secrets (already nested)
+      host: 'secret-host', // From secrets (already nested)
       password: 'secret-password' // From secrets (already nested)
     },
-    apiKey: 'secret-api-key',   // From secrets
+    apiKey: 'secret-api-key', // From secrets
     commonKey: 'rc'
   })
 

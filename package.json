@@ -4,6 +4,7 @@
   "description": "Get secrets from AWS secret manager and merge them with ENV configs",
   "type": "module",
   "main": "index.mjs",
+  "types": "index.d.ts",
   "scripts": {
     "test": "ava",
     "lint": "biome lint --fix"

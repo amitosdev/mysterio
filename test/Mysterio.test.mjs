@@ -152,6 +152,48 @@ test('getEnvConfigs() - returns dev environment config', async (t) => {
   }
 })
 
+test('getEnvConfigs() - uses env from constructor instead of NODE_ENV', async (t) => {
+  const { configDir } = await setupTestDir(t)
+  const originalNodeEnv = process.env.NODE_ENV
+  process.env.NODE_ENV = 'test'
+
+  const mysterio = new Mysterio({
+    configDirPath: configDir,
+    client: mockClient,
+    env: 'dev'
+  })
+
+  const envConfig = await mysterio.getEnvConfigs()
+  t.deepEqual(envConfig, { fooDev: 456, commonKey: 'dev' })
+
+  // Restore original NODE_ENV
+  if (originalNodeEnv) {
+    process.env.NODE_ENV = originalNodeEnv
+  } else {
+    delete process.env.NODE_ENV
+  }
+})
+
+test('getEnvConfigs() - env constructor param overrides undefined NODE_ENV', async (t) => {
+  const { configDir } = await setupTestDir(t)
+  const originalNodeEnv = process.env.NODE_ENV
+  delete process.env.NODE_ENV
+
+  const mysterio = new Mysterio({
+    configDirPath: configDir,
+    client: mockClient,
+    env: 'test'
+  })
+
+  const envConfig = await mysterio.getEnvConfigs()
+  t.deepEqual(envConfig, { fooTest: 1011, commonKey: 'test' })
+
+  // Restore original NODE_ENV
+  if (originalNodeEnv) {
+    process.env.NODE_ENV = originalNodeEnv
+  }
+})
+
 // ===========================================
 // getRcConfigs() tests
 // ===========================================
@@ -247,6 +289,66 @@ test('getSecrets() - with unflatten=false keeps dotted keys as is', async (t) =>
     'foo.baz': 123,
     'top': 'level'
   })
+})
+
+test('getSecrets() - uses env from constructor for secretName generation', async (t) => {
+  const { configDir } = await setupTestDir(t)
+  const originalNodeEnv = process.env.NODE_ENV
+  process.env.NODE_ENV = 'production'
+
+  // Track what secret name the client receives
+  let capturedSecretName
+  const spyClient = (secretName) => {
+    capturedSecretName = secretName
+    return mockClient(secretName)
+  }
+
+  const mysterio = new Mysterio({
+    configDirPath: configDir,
+    client: spyClient,
+    env: 'test'
+  })
+
+  await mysterio.getSecrets(false)
+
+  // Verify the secret name ends with /test (env from constructor)
+  t.true(capturedSecretName.endsWith('/test'), `Expected secretName to end with /test, got: ${capturedSecretName}`)
+
+  // Restore original NODE_ENV
+  if (originalNodeEnv) {
+    process.env.NODE_ENV = originalNodeEnv
+  } else {
+    delete process.env.NODE_ENV
+  }
+})
+
+test('getSecrets() - env constructor param overrides NODE_ENV for secret name generation', async (t) => {
+  const { configDir } = await setupTestDir(t)
+  const originalNodeEnv = process.env.NODE_ENV
+  delete process.env.NODE_ENV
+
+  // Track what secret name the client receives
+  let capturedSecretName
+  const spyClient = (secretName) => {
+    capturedSecretName = secretName
+    return mockClient(secretName)
+  }
+
+  const mysterio = new Mysterio({
+    configDirPath: configDir,
+    client: spyClient,
+    env: 'local'
+  })
+
+  await mysterio.getSecrets(false)
+
+  // Verify the secret name ends with /local (env from constructor)
+  t.true(capturedSecretName.endsWith('/local'), `Expected secretName to end with /local, got: ${capturedSecretName}`)
+
+  // Restore original NODE_ENV
+  if (originalNodeEnv) {
+    process.env.NODE_ENV = originalNodeEnv
+  }
 })
 
 // ===========================================
@@ -431,11 +533,23 @@ test('getMerged() - with unflattenSecrets=true unflattens dotted secret keys', a
 })
 
 test('getMerged() - with unflattenSecrets=true merges nested secrets with existing nested config', async (t) => {
-  const { tempDir, configDir } = await setupTestDir(t)
   const originalNodeEnv = process.env.NODE_ENV
   process.env.NODE_ENV = 'test'
 
-  // Create a config file with nested structure matching the secret keys
+  // Create a fresh temp directory specifically for this test to avoid race conditions
+  const tempDir = path.join(tmpdir(), `mysterio-nested-test-${Date.now()}-${Math.random().toString(36).slice(2)}`)
+  const configDir = path.join(tempDir, 'config')
+
+  // Create directories
+  await fs.mkdir(configDir, { recursive: true })
+
+  // Create default config
+  await fs.writeFile(
+    path.join(configDir, 'default.json'),
+    JSON.stringify({ fooDefault: 123, commonKey: 'default' })
+  )
+
+  // Create a test config file with nested structure matching the secret keys
   await fs.writeFile(
     path.join(configDir, 'test.json'),
     JSON.stringify({
@@ -469,6 +583,9 @@ test('getMerged() - with unflattenSecrets=true merges nested secrets with existi
     top: 'level',
     commonKey: 'test'
   })
+
+  // Clean up
+  await fs.rm(tempDir, { recursive: true, force: true })
 
   // Restore
   if (originalNodeEnv) {

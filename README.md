@@ -266,6 +266,7 @@ Creates a new Mysterio instance.
 - `configDirPath` (string): Path to config directory. Default: `./config`
 - `localRcPath` (string): Path to local RC file. Default: `./.mysteriorc`
 - `secretName` (string): Custom AWS secret name. Default: `{package-name}/{NODE_ENV || 'local'}`
+- `env` (string): Override environment name instead of using `NODE_ENV`. Affects both config file selection and secret name generation
 - `awsParams` (object): AWS SDK parameters for Secrets Manager client
 - `client` (function): Custom client function for fetching secrets
 
@@ -275,6 +276,7 @@ const mysterio = new Mysterio({
   configDirPath: './my-configs',
   localRcPath: './.myapprc',
   secretName: 'custom-secret-name',
+  env: 'staging',  // Use staging configs regardless of NODE_ENV
   awsParams: {
     region: 'us-west-2'
   }
@@ -339,18 +341,19 @@ const secrets = await mysterio.getSecrets(true)
 ### Required Sources
 
 #### Environment Config (`{env}.json`)
-Environment-specific configuration based on `NODE_ENV`:
+Environment-specific configuration based on `NODE_ENV` (or the `env` constructor option):
 - `NODE_ENV=production` -> `config/production.json`
 - `NODE_ENV=development` -> `config/development.json`
 - `NODE_ENV=test` -> `config/test.json`
 - Not set -> `config/local.json`
+- `env: 'staging'` in constructor -> `config/staging.json` (overrides `NODE_ENV`)
 
 This is where your non-sensitive settings live (ports, hosts, feature flags, etc.)
 
 #### Secrets (AWS Secrets Manager)
 Secure secrets stored in AWS, automatically fetched based on:
 - Package name from `package.json`
-- Current environment (`NODE_ENV`)
+- Current environment (`NODE_ENV` or the `env` constructor option)
 - Pattern: `{package-name}/{environment}`
 
 This is where your sensitive data lives (passwords, API keys, tokens, etc.)
@@ -589,6 +592,27 @@ NODE_ENV=dev node app.js
 # Uses config/local.json and myapp/local secrets (default)
 node app.js
 ```
+
+### Overriding Environment with `env` Option
+
+You can override the environment detection by passing the `env` option to the constructor. This is useful when you want to load a specific environment's configuration regardless of the `NODE_ENV` value:
+
+```javascript
+// Always use staging config, even if NODE_ENV is production
+const mysterio = new Mysterio({
+  env: 'staging'
+})
+
+// This will load:
+// - config/staging.json (instead of using NODE_ENV)
+// - myapp/staging secrets (instead of myapp/production)
+```
+
+**Use cases:**
+- **Testing**: Load production configs in a test environment without changing `NODE_ENV`
+- **Multi-environment apps**: Run multiple instances with different configs in the same process
+- **Config validation**: Test different environment configs without modifying environment variables
+- **CI/CD pipelines**: Explicitly specify which environment to use regardless of system settings
 
 ## Contributing
 

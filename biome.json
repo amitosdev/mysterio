@@ -1,7 +1,7 @@
 {
   "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
   "files": {
-    "includes": ["**", "!node_modules", "!.next", "!dist", "!build"],
+    "includes": ["**", "!node_modules", "!.next", "!dist", "!build", "!.sst"],
     "ignoreUnknown": true
   },
   "linter": {
@@ -10,7 +10,9 @@
         "useOptionalChain": "off",
         "noExcessiveCognitiveComplexity": {
           "level": "info",
-          "options": { "maxAllowedComplexity": 50 }
+          "options": {
+            "maxAllowedComplexity": 50
+          }
         }
       },
       "suspicious": {
@@ -19,7 +21,12 @@
       "style": {
         "useBlockStatements": "off",
         "noCommonJs": "error",
-        "useNamingConvention": "warn",
+        "useNamingConvention": {
+          "level": "warn",
+          "options": {
+            "strictCase": false
+          }
+        },
         "noParameterAssign": "warn",
         "noDefaultExport": "warn",
         "useAsConstAssertion": "error",
@@ -30,7 +37,15 @@
         "noUnusedTemplateLiteral": "error",
         "useNumberNamespace": "error",
         "noInferrableTypes": "error",
-        "noUselessElse": "error"
+        "noUselessElse": "error",
+        "useFilenamingConvention": {
+          "level": "warn",
+          "options": {
+            "strictCase": false,
+            "requireAscii": true,
+            "filenameCases": ["camelCase", "PascalCase"]
+          }
+        }
       },
       "correctness": {
         "noNodejsModules": "off",

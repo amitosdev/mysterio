@@ -614,6 +614,112 @@ const mysterio = new Mysterio({
 - **Config validation**: Test different environment configs without modifying environment variables
 - **CI/CD pipelines**: Explicitly specify which environment to use regardless of system settings
 
+## CLI Tools
+
+Mysterio includes CLI tools to help manage your configuration and secrets workflow.
+
+### Installation
+
+After installing mysterio, the CLI is available as `mysterio` (if installed globally) or via `npx mysterio`.
+
+### Commands
+
+#### `generate-template`
+
+Generate an AWS Secrets Manager template from your config file's `<aws_secret_manager>` placeholders.
+
+```bash
+# Output to stdout
+mysterio generate-template -c ./config/production.json
+
+# Output to file
+mysterio generate-template -c ./config/production.json -o ./secrets-template.json
+```
+
+**Options:**
+- `-c, --config <path>` (required) - Local config file path
+- `-o, --output <path>` - Output file path (stdout if not specified)
+
+**Example output:**
+```json
+{
+  "database.password": "replace_with_secret",
+  "database.username": "replace_with_secret",
+  "api.key": "replace_with_secret"
+}
+```
+
+#### `compare-secret`
+
+Find missing keys between an AWS secret and your local config's placeholders.
+
+```bash
+# Using defaults (reads ./config/{NODE_ENV}.json and {packageName}/{NODE_ENV} secret)
+mysterio compare-secret
+
+# Specify environment explicitly
+mysterio compare-secret -e production
+
+# Specify custom paths
+mysterio compare-secret -c ./config/production.json -s myapp/production
+```
+
+**Options:**
+- `-c, --config <path>` - Local config file path (default: `./config/{env}.json`)
+- `-s, --secret <name>` - AWS secret name (default: `{packageName}/{env}`)
+- `-e, --env <env>` - Environment (default: `NODE_ENV` or `"local"`)
+- `-r, --region <region>` - AWS region (default: `us-east-1`)
+- `-o, --output <format>` - Output format: `text` or `json` (default: `text`)
+
+**Exit codes:**
+- `0` - All placeholders are present in the AWS secret
+- `1` - Some placeholders are missing
+- `2` - Error occurred
+
+#### `compare-configs`
+
+Compare merged configurations between two environments using superdiff.
+
+```bash
+# Compare staging and production configs (without secrets)
+mysterio compare-configs --env1 staging --env2 production --sources "default,env"
+
+# Compare with AWS secrets (uses default {packageName}/{env} pattern)
+mysterio compare-configs --env1 staging --env2 production
+
+# Compare with custom secret template
+mysterio compare-configs --env1 staging --env2 production -s "myapp/{env}"
+```
+
+**Options:**
+- `--env1 <env>` (required) - First environment
+- `--env2 <env>` (required) - Second environment
+- `-d, --config-dir <path>` - Config directory (default: `./config`)
+- `-s, --secret <template>` - Secret name template with `{env}` placeholder (default: `{packageName}/{env}`)
+- `-r, --region <region>` - AWS region (default: `us-east-1`)
+- `--sources <sources>` - Comma-separated merge sources (default: `default,env,secrets`)
+- `-o, --output <format>` - Output format: `text` or `json` (default: `text`)
+
+**Example output:**
+```
+Comparing configs: staging vs production
+Sources: default, env
+
+~ app.port: 3001 -> 8080
+~ debug: true -> false
++ replicas: 3
+```
+
+**Output symbols:**
+- `+` Added (only in env2)
+- `-` Deleted (only in env1)
+- `~` Updated (changed between environments)
+
+**Exit codes:**
+- `0` - Configs are identical
+- `1` - Configs have differences
+- `2` - Error occurred
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.

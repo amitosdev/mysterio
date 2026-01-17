@@ -5,6 +5,9 @@
   "type": "module",
   "main": "index.mjs",
   "types": "index.d.ts",
+  "bin": {
+    "mysterio": "./cli/index.mjs"
+  },
   "scripts": {
     "test": "ava",
     "lint": "biome check --write --diagnostic-level error"
@@ -20,6 +23,9 @@
   },
   "dependencies": {
     "@aws-sdk/client-secrets-manager": "^3.958.0",
+    "@donedeal0/superdiff": "^3.2.0",
+    "cli-table3": "^0.6.5",
+    "commander": "^14.0.2",
     "debug": "^4.4.3",
     "flat": "^6.0.1",
     "lodash.capitalize": "^4.2.1",

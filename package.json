@@ -1,6 +1,6 @@
 {
   "name": "mysterio",
-  "version": "3.2.0",
+  "version": "3.3.0",
   "description": "Get secrets from AWS secret manager and merge them with ENV configs",
   "type": "module",
   "main": "index.mjs",
